@@ -148,7 +148,7 @@ void dmxUpdateAddr() {
 
 // DMX receiver interrupt for Atmega 32u4
 //
-#ifdef ATMEGA_328P
+#ifdef ATMEGA_32u4
 
 SIGNAL(SIG_USART_RECV) {
 	uint8_t uartError, uartData;
@@ -323,12 +323,14 @@ void dsiRgb(uint8_t red, uint8_t green, uint8_t blue) {
 // PWM handling
 //
 #ifdef OUTPUT_PWM
+#ifdef ATMEGA_328P
 void pwmSet(uint8_t a, uint8_t b, uint8_t c, uint8_t d) {
 	OCR1A = a;
 	OCR0A = b;
 	OCR0B = c;
 	OCR2B = d;
 }
+
 
 void pwmSetup() {
 	pwmSet(0,0,0,0);
@@ -339,6 +341,27 @@ void pwmSetup() {
 	TCCR2A = _BV(WGM20) | _BV(COM2B1);
 	TCCR2B = _BV(CS22);
 }
+#endif
+#ifdef ATMEGA_32u4  
+void pwmSet(uint8_t a, uint8_t b, uint8_t c, uint8_t d) {		///Work in progress
+	OCR1A = a;
+	OCR0A = b;
+	OCR0B = c;
+	OCR2B = d;
+}
+
+
+void pwmSetup() {
+	pwmSet(0,0,0,0);
+	TCCR0A = _BV(WGM00) | _BV(WGM01) | _BV(COM0A1) | _BV(COM0B1);
+	TCCR0B = _BV(CS01) | _BV(CS00);
+	TCCR1A = _BV(WGM10) | _BV(COM1A1);
+	TCCR1B = _BV(CS11) | _BV(CS10);
+	TCCR2A = _BV(WGM20) | _BV(COM2B1);
+	TCCR2B = _BV(CS22);
+}
+#endif
+
 #endif
 
 /////////////////////////////////////////////////////////////////////
