@@ -3,6 +3,7 @@
 
 //#define OUTPUT_DSI
 #define OUTPUT_PWM
+//#define OUTPUT_RELAY
 
 #define DIP2 PB0
 #define OUT1 PB1
@@ -254,6 +255,23 @@ void pwmSetup() {
 #endif
 
 /////////////////////////////////////////////////////////////////////
+//RELAY output handling
+//
+
+#ifdef OUTPUT_RELAY
+
+void relaySet(uint8_t rl1, uint8_t rl2, uint8_t rl3, uint8_t rl4) {
+	PORTx |= ((1&(rl1>>7))<<Pxx);
+	PORTx |= ((1&(rl2>>7))<<Pxx);
+	PORTx |= ((1&(rl3>>7))<<Pxx);
+	PORTx |= ((1&(rl4>>7))<<Pxx);
+}
+
+#endif
+
+
+
+/////////////////////////////////////////////////////////////////////
 // Core code
 //
 void setup() {
@@ -293,6 +311,8 @@ void loop() {
 			dsiRgb(dmxData[0],dmxData[1],dmxData[2]);
 #elif defined(OUTPUT_PWM)
 			pwmSet(dmxData[0],dmxData[1],dmxData[2],dmxData[3]);
+#elif defined(OUTPUT_RELAY)
+			relaySet(dmxData[0],dmxData[1],dmxData[2],dmxData[3]);
 #endif
 			dmxNewData = 0;
 			PORTB |= _BV(RX_LED);
@@ -304,6 +324,8 @@ void loop() {
 				dsiRgb(0,0,0);
 #elif defined(OUTPUT_PWM)
 				pwmSet(0,0,0,0);
+#elif defined(OUTPUT_RELAY)
+				relaySet(0,0,0,0);
 #endif
 				dmxTimeout = DMXTIMEOUT;
 				PORTB &= ~_BV(RX_LED);
@@ -343,6 +365,13 @@ void loop() {
 			(testChannel == 2) ? testBrightness : 0,
 			(testChannel == 3) ? testBrightness : 0
 		);
+#elif defined(OUTPUT_RELAY)
+		relaySet(
+			(testChannel == 0) ? testBrightness : 0, // testBrightness doesn't set brightness, channel will stay off until 127 and on from 127 to 255
+			(testChannel == 1) ? testBrightness : 0,
+			(testChannel == 2) ? testBrightness : 0,
+			(testChannel == 3) ? testBrightness : 0
+		);
 #endif
 
 		// Quick delay loop
@@ -351,7 +380,7 @@ void loop() {
 	}
 }
 
-void main() {
+int main() {
 	setup();
 	dmxNewData = 1;
 	dmxData[0] = 0;
