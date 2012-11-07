@@ -45,6 +45,7 @@ uint8_t dmxMode;
 /////////////////////////////////////////////////////////////////////
 // DMX handling
 //
+#ifdef ATMEGA_328P
 void dmxRxSetup() {
 	// Set DMX to receive mode
 	PORTD &= ~_BV(DMXTX);
@@ -62,9 +63,34 @@ void dmxRxSetup() {
 	dmxNumCh = DMX_MAX_CH;
 	sei();
 }
+#endif
 
-// DMX receiver interrupt
+#ifdef ATMEGA_32u4
+
+void dmxRxSetup() {
+	// Set DMX to receive mode
+	PORTD &= ~_BV(DMXTX);
+
+	// Set up serial port
+	UBRR1 = (F_CPU / (DMX_BAUD_RATE * 16L) - 1);
+	UCSR1B = _BV(RXCIE1) | _BV(RXEN1);
+	UCSR1C = _BV(USBS1) | _BV(UCSZ10) | _BV(UCSZ11);
+
+	// Turn on pullups for DIP switch pins
+	PORTC |= _BV(DIP10) | _BV(DIP9) | _BV(DIP8) | _BV(DIP7) | _BV(DIP6) | _BV(DIP5);
+	PORTD |= _BV(DIP4) | _BV(DIP3);
+	PORTB |= _BV(DIP2) | _BV(DIP1);
+
+	dmxNumCh = DMX_MAX_CH;
+	sei();
+}
+
+#endif
+
+// DMX receiver interrupt for Atmega 328p
 // Must service within 44us to avoid overflow.
+#ifdef ATMEGA_328P
+
 SIGNAL(SIG_USART_RECV) {
 	uint8_t uartError, uartData;
 	uint8_t *dmxWriteAddr;
@@ -116,6 +142,67 @@ void dmxUpdateAddr() {
 	dmxMode = (PINC & _BV(DIP10)) ? 0:1;
 	dmxNumCh = 4;
 }
+
+#endif
+
+
+// DMX receiver interrupt for Atmega 32u4
+//
+#ifdef ATMEGA_328P
+
+SIGNAL(SIG_USART_RECV) {
+	uint8_t uartError, uartData;
+	uint8_t *dmxWriteAddr;
+	uartError = UCSR1A;
+	uartData = UDR1;
+
+	if (uartError & _BV(DOR1)) {
+		// Data overrun
+		// Important to capture to debug interrupt issues once we get a
+		// framework running
+	} else if (uartError & _BV(FE1)) {
+		// Break condition is start of DMX frame
+		dmxRxAwaitStart = 1;
+	} else if (dmxRxAwaitStart) {
+		dmxRxAwaitStart = 0;
+		dmxStartCode = uartData;
+		dmxRxPosition = 1;
+	} else {
+		if (dmxStartCode == 0) {
+			// Channel data
+			if (dmxRxPosition == dmxStartAddress) {
+				dmxRxCount = dmxNumCh;
+				dmxWriteAddr = dmxData;
+				dmxOffset = 0;
+			}
+			if (dmxRxCount) {
+				dmxData[dmxOffset++] = uartData;
+				//*dmxWriteAddr++ = uartData;
+				dmxRxCount--;
+				if (!dmxRxCount) dmxNewData = 1;
+			}
+			dmxRxPosition++;
+		}
+	}
+}
+
+void dmxUpdateAddr() {
+	uint16_t address = 0;
+	if (!(PINB & _BV(DIP1))) address |= 0x001;
+	if (!(PINB & _BV(DIP2))) address |= 0x002;
+	if (!(PIND & _BV(DIP3))) address |= 0x004;
+	if (!(PIND & _BV(DIP4))) address |= 0x008;
+	if (!(PINC & _BV(DIP5))) address |= 0x010;
+	if (!(PINC & _BV(DIP6))) address |= 0x020;
+	if (!(PINC & _BV(DIP7))) address |= 0x040;
+	if (!(PINC & _BV(DIP8))) address |= 0x080;
+	if (!(PINC & _BV(DIP9))) address |= 0x100;
+	dmxStartAddress = address;
+	dmxMode = (PINC & _BV(DIP10)) ? 0:1;
+	dmxNumCh = 4;
+}
+
+#endif
 
 /////////////////////////////////////////////////////////////////////
 // DSI output handling
@@ -267,6 +354,10 @@ void relaySet(uint8_t rl1, uint8_t rl2, uint8_t rl3, uint8_t rl4) {
 	PORTx |= ((1&(rl4>>7))<<Pxx);
 }
 
+void relaySetup(){
+	relaySet(0,0,0,0);
+}
+
 #endif
 
 
@@ -277,8 +368,10 @@ void relaySet(uint8_t rl1, uint8_t rl2, uint8_t rl3, uint8_t rl4) {
 void setup() {
 	// Tweak power reduction register
 #ifdef OUTPUT_DSI
+#ifdef ATMEGA_328P
 	PRR = _BV(PRTWI) | _BV(PRTIM1) | _BV(PRTIM2) | _BV(PRSPI) | _BV(PRADC);
 #elif defined(OUTPUT_PWM)
+#ifdef ATMEGA_328P
 	PRR = _BV(PRTWI) | _BV(PRSPI) | _BV(PRADC);
 #endif
 	// Set up ports
@@ -289,6 +382,8 @@ void setup() {
 	dsiSetup();
 	#elif defined(OUTPUT_PWM)
 	pwmSetup();
+	#elif defined(OUTPUT_RELAY)
+	relaySetup();
 	#endif
 	dmxRxSetup();
 }
