@@ -400,17 +400,25 @@ void pwmSetup() {
 #ifdef OUTPUT_RELAY
 #ifdef ATMEGA_328P
 void relaySet(uint8_t rl1, uint8_t rl2, uint8_t rl3, uint8_t rl4) {
-	PORTB |= ((1&(rl1>>7))<<PB1);
-	PORTD |= ((1&(rl2>>7))<<PD6);
-	PORTD |= ((1&(rl3>>7))<<PD5);
-	PORTD |= ((1&(rl4>>7))<<PD3);
+	if (1&(rl1>>7)) PORTB |= _BV(PB1);
+	else PORTB &= ~_BV(PB1);
+	if (1&(rl2>>7)) PORTD |= _BV(PD6);
+	else PORTD &= ~_BV(PD6);
+	if (1&(rl3>>7)) PORTD |= _BV(PD5);
+	else PORTD &= ~_BV(PD5);
+	if (1&(rl4>>7)) PORTD |= _BV(PD3);
+	else PORTD &= ~_BV(PD3);	
 }
 #elif defined(ATMEGA_32u4)
 void relaySet(uint8_t rl1, uint8_t rl2, uint8_t rl3, uint8_t rl4) {
-	PORTD |= ((1&(rl1>>7))<<OUT1);
-	PORTC |= ((1&(rl2>>7))<<OUT2);
-	PORTB |= ((1&(rl3>>7))<<OUT3);
-	PORTB |= ((1&(rl4>>7))<<OUT4);
+	if (1&(rl1>>7)) PORTD |= _BV(OUT1);
+	else PORTD &= ~_BV(OUT1);
+	if (1&(rl2>>7)) PORTC |= _BV(OUT2);
+	else PORTC &= ~_BV(OUT2);
+	if (1&(rl3>>7)) PORTD |= _BV(OUT3);
+	else PORTB &= ~_BV(OUT3);
+	if (1&(rl4>>7)) PORTB |= _BV(OUT4);
+	else PORTB &= ~_BV(OUT4);	
 }
 
 void relaySetup(){
