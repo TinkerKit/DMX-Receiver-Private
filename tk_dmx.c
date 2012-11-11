@@ -283,6 +283,8 @@ void dsiUpdate() {
 
 uint8_t dsiSettleTime = 6;
 
+#ifdef ATMEGA_328P
+
 #define DSI1HIGH() PORTB |= _BV(OUT1)
 #define DSI2HIGH() PORTD |= _BV(OUT2)
 #define DSI3HIGH() PORTD |= _BV(OUT3)
@@ -291,6 +293,20 @@ uint8_t dsiSettleTime = 6;
 #define DSI2LOW() PORTD &= ~_BV(OUT2)
 #define DSI3LOW() PORTD &= ~_BV(OUT3)
 #define DSI4LOW() PORTD &= ~_BV(OUT4)
+
+#elif defined(ATMEGA_32u4)
+
+#define DSI1HIGH() PORTD |= _BV(OUT1)
+#define DSI2HIGH() PORTC |= _BV(OUT2)
+#define DSI3HIGH() PORTB |= _BV(OUT3)
+#define DSI4HIGH() PORTB |= _BV(OUT4)
+#define DSI1LOW() PORTD &= ~_BV(OUT1)
+#define DSI2LOW() PORTC &= ~_BV(OUT2)
+#define DSI3LOW() PORTB &= ~_BV(OUT3)
+#define DSI4LOW() PORTB &= ~_BV(OUT4)
+
+#endif
+
 
 SIGNAL(TIMER0_COMPA_vect) {
 	if (dsiSettleTime) {
@@ -382,12 +398,17 @@ void pwmSet(uint8_t a, uint8_t b, uint8_t c, uint8_t d) {		///Work in progress
 
 void pwmSetup() {
 	pwmSet(0,0,0,0);
-	TCCR0A = _BV(WGM00) | _BV(WGM01) | _BV(COM0A1) | _BV(COM0B1);
-	TCCR0B = _BV(CS01) | _BV(CS00);
-	TCCR1A = _BV(WGM10) | _BV(COM1A1);
+	OCR4C = 0xff;
+	TCCR4A = 0;
+	TCCR4B =  _BV(CS42) |_BV(CS41) | _BV(CS40);
+	TCCR4C = _BV(PWM4D) | _BV(COM4D1);
+	TCCR4D = _BV(WGM40);
+	
+	TCCR1A = _BV(WGM10) | _BV(COM1A1) | _BV(COM1B1);
 	TCCR1B = _BV(CS11) | _BV(CS10);
-	TCCR2A = _BV(WGM20) | _BV(COM2B1);
-	TCCR2B = _BV(CS22);
+	TCCR3A = _BV(WGM30) | _BV(COM3A1);
+	TCCR3B = _BV(CS31) | _BV(CS30);
+	
 }
 #endif
 
@@ -402,10 +423,13 @@ void pwmSetup() {
 void relaySet(uint8_t rl1, uint8_t rl2, uint8_t rl3, uint8_t rl4) {
 	if (1&(rl1>>7)) PORTB |= _BV(PB1);
 	else PORTB &= ~_BV(PB1);
+	
 	if (1&(rl2>>7)) PORTD |= _BV(PD6);
 	else PORTD &= ~_BV(PD6);
+	
 	if (1&(rl3>>7)) PORTD |= _BV(PD5);
 	else PORTD &= ~_BV(PD5);
+	
 	if (1&(rl4>>7)) PORTD |= _BV(PD3);
 	else PORTD &= ~_BV(PD3);	
 }
@@ -413,10 +437,13 @@ void relaySet(uint8_t rl1, uint8_t rl2, uint8_t rl3, uint8_t rl4) {
 void relaySet(uint8_t rl1, uint8_t rl2, uint8_t rl3, uint8_t rl4) {
 	if (1&(rl1>>7)) PORTD |= _BV(OUT1);
 	else PORTD &= ~_BV(OUT1);
+	
 	if (1&(rl2>>7)) PORTC |= _BV(OUT2);
 	else PORTC &= ~_BV(OUT2);
+	
 	if (1&(rl3>>7)) PORTD |= _BV(OUT3);
 	else PORTB &= ~_BV(OUT3);
+	
 	if (1&(rl4>>7)) PORTB |= _BV(OUT4);
 	else PORTB &= ~_BV(OUT4);	
 }
@@ -434,6 +461,8 @@ void relaySetup(){
 //
 void setup() {
 	// Tweak power reduction register
+	
+#ifdef ATMEGA_328P
 #ifdef OUTPUT_DSI
 	PRR = _BV(PRTWI) | _BV(PRTIM1) | _BV(PRTIM2) | _BV(PRSPI) | _BV(PRADC);
 #elif defined(OUTPUT_PWM)
@@ -445,6 +474,24 @@ void setup() {
 	DDRB = _BV(OUT1) | _BV(RX_LED);
 	DDRC = 0; // All inputs
 	DDRD = _BV(DMXTX) | _BV(DMXTXEN) | _BV(OUT4) | _BV(OUT3) | _BV(OUT2);
+	
+#elif defined(ATMEGA_32u4)
+#ifdef OUTPUT_DSI
+	PRR = _BV(PRTWI) | _BV(PRTIM1) | _BV(PRTIM2) | _BV(PRSPI) | _BV(PRADC);
+	PRR1 = _BV(PRTIM3) | _BV(PRUSB);
+#elif defined(OUTPUT_PWM)
+	PRR = _BV(PRTWI) | _BV(PRSPI) | _BV(PRADC);
+	PRR1 = _BV(USB);
+#elif defined(OUTPUT_RELAY)
+	PRR = _BV(PRTWI) | _BV(PRTIM0) | _BV(PRTIM1) | _BV(PRTIM2) | _BV(PRSPI) | _BV(PRADC);
+	PRR1 = _BV(PRTIM3) | _BV(PRTIM4) | _BV(PRUSB);	
+#endif
+	
+
+
+#endif
+	
+	
 	#ifdef OUTPUT_DSI
 	dsiSetup();
 	#elif defined(OUTPUT_PWM)
