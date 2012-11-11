@@ -5,6 +5,10 @@
 #define OUTPUT_PWM
 //#define OUTPUT_RELAY
 
+
+
+#ifdef ATMEGA_328P
+
 #define DIP2 PB0
 #define OUT1 PB1
 #define DIP1 PB2
@@ -26,6 +30,31 @@
 #define OUT2 PD6
 #define DIP3 PD7
 
+#elif defined(ATMEGA_32u4)
+
+#define DIP4 PB7
+#define OUT1 PD7
+#define DIP1 PB4
+#define RX_LED PB3
+
+#define DIP10 PF0
+#define DIP9 PF1
+#define DIP8 PF4
+#define DIP7 PF5
+#define DIP6 PF6
+#define DIP5 PF7
+
+#define DMXRX PD2
+#define DMXTX PD3
+#define DMXTXEN PD1
+#define OUT4 PB6
+
+#define OUT3 PB5
+#define OUT2 PC6
+#define DIP3 PD4
+#define DIP2 PD6
+
+#endif
 
 #define DMX_BAUD_RATE 250000
 #define DMX_MAX_CH 4
@@ -77,9 +106,9 @@ void dmxRxSetup() {
 	UCSR1C = _BV(USBS1) | _BV(UCSZ10) | _BV(UCSZ11);
 
 	// Turn on pullups for DIP switch pins
-	PORTC |= _BV(DIP10) | _BV(DIP9) | _BV(DIP8) | _BV(DIP7) | _BV(DIP6) | _BV(DIP5);
-	PORTD |= _BV(DIP4) | _BV(DIP3);
-	PORTB |= _BV(DIP2) | _BV(DIP1);
+	PORTF |= _BV(DIP10) | _BV(DIP9) | _BV(DIP8) | _BV(DIP7) | _BV(DIP6) | _BV(DIP5);
+	PORTD |= _BV(DIP2) | _BV(DIP3);
+	PORTB |= _BV(DIP1) | _BV(DIP4);
 
 	dmxNumCh = DMX_MAX_CH;
 	sei();
@@ -189,16 +218,16 @@ SIGNAL(SIG_USART_RECV) {
 void dmxUpdateAddr() {
 	uint16_t address = 0;
 	if (!(PINB & _BV(DIP1))) address |= 0x001;
-	if (!(PINB & _BV(DIP2))) address |= 0x002;
+	if (!(PIND & _BV(DIP2))) address |= 0x002;
 	if (!(PIND & _BV(DIP3))) address |= 0x004;
-	if (!(PIND & _BV(DIP4))) address |= 0x008;
-	if (!(PINC & _BV(DIP5))) address |= 0x010;
-	if (!(PINC & _BV(DIP6))) address |= 0x020;
-	if (!(PINC & _BV(DIP7))) address |= 0x040;
-	if (!(PINC & _BV(DIP8))) address |= 0x080;
-	if (!(PINC & _BV(DIP9))) address |= 0x100;
+	if (!(PINB & _BV(DIP4))) address |= 0x008;
+	if (!(PINF & _BV(DIP5))) address |= 0x010;
+	if (!(PINF & _BV(DIP6))) address |= 0x020;
+	if (!(PINF & _BV(DIP7))) address |= 0x040;
+	if (!(PINF & _BV(DIP8))) address |= 0x080;
+	if (!(PINF & _BV(DIP9))) address |= 0x100;
 	dmxStartAddress = address;
-	dmxMode = (PINC & _BV(DIP10)) ? 0:1;
+	dmxMode = (PINF & _BV(DIP10)) ? 0:1;
 	dmxNumCh = 4;
 }
 
@@ -344,10 +373,10 @@ void pwmSetup() {
 #endif
 #ifdef ATMEGA_32u4  
 void pwmSet(uint8_t a, uint8_t b, uint8_t c, uint8_t d) {		///Work in progress
-	OCR1A = a;
-	OCR0A = b;
-	OCR0B = c;
-	OCR2B = d;
+	OCR4D = a;
+	OCR3A = b;
+	OCR1A = c;
+	OCR1B = d;
 }
 
 
@@ -369,12 +398,19 @@ void pwmSetup() {
 //
 
 #ifdef OUTPUT_RELAY
-
+#ifdef ATMEGA_328P
 void relaySet(uint8_t rl1, uint8_t rl2, uint8_t rl3, uint8_t rl4) {
-	PORTx |= ((1&(rl1>>7))<<Pxx);
-	PORTx |= ((1&(rl2>>7))<<Pxx);
-	PORTx |= ((1&(rl3>>7))<<Pxx);
-	PORTx |= ((1&(rl4>>7))<<Pxx);
+	PORTB |= ((1&(rl1>>7))<<PB1);
+	PORTD |= ((1&(rl2>>7))<<PD6);
+	PORTD |= ((1&(rl3>>7))<<PD5);
+	PORTD |= ((1&(rl4>>7))<<PD3);
+}
+#elif defined(ATMEGA_32u4)
+void relaySet(uint8_t rl1, uint8_t rl2, uint8_t rl3, uint8_t rl4) {
+	PORTD |= ((1&(rl1>>7))<<OUT1);
+	PORTC |= ((1&(rl2>>7))<<OUT2);
+	PORTB |= ((1&(rl3>>7))<<OUT3);
+	PORTB |= ((1&(rl4>>7))<<OUT4);
 }
 
 void relaySetup(){
@@ -391,11 +427,11 @@ void relaySetup(){
 void setup() {
 	// Tweak power reduction register
 #ifdef OUTPUT_DSI
-#ifdef ATMEGA_328P
 	PRR = _BV(PRTWI) | _BV(PRTIM1) | _BV(PRTIM2) | _BV(PRSPI) | _BV(PRADC);
 #elif defined(OUTPUT_PWM)
-#ifdef ATMEGA_328P
 	PRR = _BV(PRTWI) | _BV(PRSPI) | _BV(PRADC);
+#elif defined(OUTPUT_RELAY)
+	PRR = _BV(PRTWI) | _BV(PRTIM0) | _BV(PRTIM1) | _BV(PRTIM2) | _BV(PRSPI) | _BV(PRADC);
 #endif
 	// Set up ports
 	DDRB = _BV(OUT1) | _BV(RX_LED);
