@@ -453,7 +453,7 @@ void relaySetup(){
 }
 
 #endif
-
+#endif
 
 
 /////////////////////////////////////////////////////////////////////
@@ -477,16 +477,19 @@ void setup() {
 	
 #elif defined(ATMEGA_32u4)
 #ifdef OUTPUT_DSI
-	PRR = _BV(PRTWI) | _BV(PRTIM1) | _BV(PRTIM2) | _BV(PRSPI) | _BV(PRADC);
+	PRR0 = _BV(PRTWI) | _BV(PRTIM1) | _BV(PRTIM2) | _BV(PRSPI) | _BV(PRADC);
 	PRR1 = _BV(PRTIM3) | _BV(PRUSB);
 #elif defined(OUTPUT_PWM)
-	PRR = _BV(PRTWI) | _BV(PRSPI) | _BV(PRADC);
+	PRR0 = _BV(PRTWI) | _BV(PRSPI) | _BV(PRADC);
 	PRR1 = _BV(USB);
 #elif defined(OUTPUT_RELAY)
-	PRR = _BV(PRTWI) | _BV(PRTIM0) | _BV(PRTIM1) | _BV(PRTIM2) | _BV(PRSPI) | _BV(PRADC);
+	PRR0 = _BV(PRTWI) | _BV(PRTIM0) | _BV(PRTIM1) | _BV(PRTIM2) | _BV(PRSPI) | _BV(PRADC);
 	PRR1 = _BV(PRTIM3) | _BV(PRTIM4) | _BV(PRUSB);	
 #endif
-	
+	DDRF = 0;
+	DDRD = _BV(OUT1);
+	DDRB = _BV(OUT3) | _BV(OUT4);
+	DDRC = _BV(OUT2);
 
 
 #endif
